@@ -104,7 +104,7 @@ extract() {
     local path="$2"
 
     group "Extracting $tarball..."
-    tar xzf "$tarball" -C "$path" --numeric-owner 2>&1
+    tar --zstd -xf "$tarball" -C "$path" --numeric-owner 2>&1
     endgroup
 }
 
@@ -150,15 +150,15 @@ run() {
 ####################################################################################################
 
 # Download the latest bootstrap tarball from the mirror and signature from the official server
-download "$INPUT_ARCH_MIRROR/iso/$INPUT_ARCH_VERSION/archlinux-bootstrap-x86_64.tar.gz" "archlinux-bootstrap-x86_64.tar.gz"
-download "https://archlinux.org/iso/$INPUT_ARCH_VERSION/archlinux-bootstrap-x86_64.tar.gz.sig" "archlinux-bootstrap-x86_64.tar.gz.sig"
+download "$INPUT_ARCH_MIRROR/iso/$INPUT_ARCH_VERSION/archlinux-bootstrap-x86_64.tar.zst" "archlinux-bootstrap-x86_64.tar.zst"
+download "https://archlinux.org/iso/$INPUT_ARCH_VERSION/archlinux-bootstrap-x86_64.tar.zst.sig" "archlinux-bootstrap-x86_64.tar.zst.sig"
 
 # Verify the signature
 gpg --auto-key-locate clear,wkd -v --locate-external-key "pierre@archlinux.org"
-verify "archlinux-bootstrap-x86_64.tar.gz" "archlinux-bootstrap-x86_64.tar.gz.sig"
+verify "archlinux-bootstrap-x86_64.tar.zst" "archlinux-bootstrap-x86_64.tar.zst.sig"
 
 # Extract the tarball
-extract "archlinux-bootstrap-x86_64.tar.gz" "$RUNNER_HOME"
+extract "archlinux-bootstrap-x86_64.tar.zst" "$RUNNER_HOME"
 
 # Bind mount rootfs to itself
 bind_mount "$ARCH_ROOTFS_DIR" "$ARCH_ROOTFS_DIR"
