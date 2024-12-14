@@ -91,7 +91,7 @@ verify() {
     local sig="$2"
 
     group "Verifying $file..."
-    gpg --verify "$sig" "$file" 2>&1
+    gpg --keyserver-options auto-key-retrieve --verify "$sig" "$file" 2>&1
     endgroup
 }
 
