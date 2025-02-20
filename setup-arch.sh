@@ -4,8 +4,7 @@
 # It is meant to be run on a Debian-based system (e.g. Ubuntu) with root privileges via sudo.
 #
 # Following environment variables are required:
-#   - INPUT_ARCH_VERSION: Version of Arch Linux to install (e.g. 2023.12.01)
-#   - INPUT_ARCH_MIRROR: Mirror to download the bootstrap tarball from (e.g. https://mirror.pkgbuild.com)
+#   - INPUT_ARCH_MIRROR: Mirror to download the bootstrap tarball from (e.g. https://mirror.archlinuxarm.org)
 #   - INPUT_ARCH_PACKAGES: List of additional packages to install, separated by spaces (e.g. git vim)
 #
 # Bash 4 and higher is required.
@@ -15,11 +14,12 @@ set -euo pipefail
 
 ## Constants
 ####################################################################################################
-readonly WHAT_I_AM="$(readlink -f "$0")"
-readonly WHERE_I_AM="$(cd "$(dirname "$0")" && pwd)"
+# readonly WHAT_I_AM="$(readlink -f "$0")"
+WHERE_I_AM="$(cd "$(dirname "$0")" && pwd)"
+readonly WHERE_I_AM
 
 readonly RUNNER_HOME="/home/$SUDO_USER"
-readonly ARCH_ROOTFS_DIR="$RUNNER_HOME/root.x86_64"
+readonly ARCH_ROOTFS_DIR="$RUNNER_HOME/root.aarch64"
 
 ## Logging functions
 ####################################################################################################
@@ -82,19 +82,6 @@ download() {
     endgroup
 }
 
-## Verify a file with a given GPG signature.
-##
-## $1: Path to the file to verify
-## $2: Path to the signature file
-verify() {
-    local file="$1"
-    local sig="$2"
-
-    group "Verifying $file..."
-    gpg --keyserver-options auto-key-retrieve --verify "$sig" "$file" 2>&1
-    endgroup
-}
-
 ## Extract a tarball while preserving permissions.
 ##
 ## $1: Path to the tarball to extract
@@ -104,7 +91,8 @@ extract() {
     local path="$2"
 
     group "Extracting $tarball..."
-    tar --zstd -xf "$tarball" -C "$path" --numeric-owner 2>&1
+    mkdir -p "$path"
+    tar --gzip -xf "$tarball" -C "$path" --numeric-owner 2>&1
     endgroup
 }
 
@@ -150,28 +138,24 @@ run() {
 ####################################################################################################
 
 # Download the latest bootstrap tarball from the mirror and signature from the official server
-download "$INPUT_ARCH_MIRROR/iso/$INPUT_ARCH_VERSION/archlinux-bootstrap-x86_64.tar.zst" "archlinux-bootstrap-x86_64.tar.zst"
-download "https://archlinux.org/iso/$INPUT_ARCH_VERSION/archlinux-bootstrap-x86_64.tar.zst.sig" "archlinux-bootstrap-x86_64.tar.zst.sig"
-
-# Verify the signature
-gpg --auto-key-locate clear,wkd -v --locate-external-key "pierre@archlinux.org"
-verify "archlinux-bootstrap-x86_64.tar.zst" "archlinux-bootstrap-x86_64.tar.zst.sig"
+download "http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz" "ArchLinuxARM-aarch64-latest.tar.gz"
 
 # Extract the tarball
-extract "archlinux-bootstrap-x86_64.tar.zst" "$RUNNER_HOME"
+extract "ArchLinuxARM-aarch64-latest.tar.gz" "$ARCH_ROOTFS_DIR"
 
 # Bind mount rootfs to itself
 bind_mount "$ARCH_ROOTFS_DIR" "$ARCH_ROOTFS_DIR"
 
 # Copy the action script
 install -Dvm755 "$WHERE_I_AM/arch.sh" "$ARCH_ROOTFS_DIR/bounce/arch.sh"
+install -Dvm755 "$WHERE_I_AM/arch-chroot" "$ARCH_ROOTFS_DIR/bin/arch-chroot"
 
 # Populate the mirror list
-write "$ARCH_ROOTFS_DIR/etc/pacman.d/mirrorlist" "Server = $INPUT_ARCH_MIRROR/\$repo/os/\$arch"
+write "$ARCH_ROOTFS_DIR/etc/pacman.d/mirrorlist" "Server = $INPUT_ARCH_MIRROR/\$arch/\$repo"
 
 # Install essential packages (base-devel)
 run "pacman-key --init"
-run "pacman-key --populate archlinux"
+run "pacman-key --populate archlinuxarm"
 run "sed -i 's/CheckSpace/#CheckSpace/' /etc/pacman.conf"
 run "pacman -Syu --noconfirm --needed base-devel"
 
@@ -191,7 +175,7 @@ bind_mount "$RUNNER_HOME" "$ARCH_ROOTFS_DIR/$RUNNER_HOME"
 run "echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers"
 
 # Clean up
-rm -rf "archlinux-bootstrap-x86_64.tar.gz" "archlinux-bootstrap-x86_64.tar.gz.sig"
+rm -rf "ArchLinuxARM-aarch64-latest.tar.gz"
 
 # Output the path to the rootfs directory
 output root-path "$ARCH_ROOTFS_DIR"

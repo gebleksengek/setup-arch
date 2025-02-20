@@ -7,14 +7,10 @@ branding:
   color: blue
 
 inputs:
-  version:
-    description: Version of Arch Linux to install.
-    required: false
-    default: latest
   mirror:
     description: Mirror to use for downloading Arch Linux packages.
     required: false
-    default: https://geo.mirror.pkgbuild.com
+    default: http://mirror.archlinuxarm.org
   packages:
     description: Packages to install in the Arch Linux environment.
     required: false
@@ -25,7 +21,6 @@ runs:
   steps:
     - id: setup
       env:
-        INPUT_ARCH_VERSION: ${{ inputs.version }}
         INPUT_ARCH_MIRROR: ${{ inputs.mirror }}
         INPUT_ARCH_PACKAGES: ${{ inputs.packages }}
       run: sudo -E ./setup-arch.sh
